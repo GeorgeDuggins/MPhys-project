@@ -16,18 +16,8 @@ def viscous_frequency(displacements, Radius, Height, alpha):
     f = lambda displacements: displacements**(-3/2)*((Height/Radius)**2)*(alpha/(2*np.pi))
     frequencies = f(displacements)
     return frequencies
-
-def sin_accretion_rate(ts):
-    f = lambda ts: np.sin((ts/t)*4*np.pi)
-    ys = f(ts)
-    return ys
     
 
 annuli = annuli_displacements(R, R0, a)
 
 fs = viscous_frequency(annuli, R, H, alpha)
-
-ts = np.arange(0, t)
-Ar = sin_accretion_rate(ts)
-
-plt.pyplot.plot(ts,Ar)
