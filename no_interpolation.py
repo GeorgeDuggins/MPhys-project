@@ -10,6 +10,7 @@ H = 1 #disc height
 t = 1000000 #number of time values at which we measure Mdot
 res = 50 #number of values calculated per timescale
 
+
 def annuli_displacements(Radius, MinRad, Annuli):
     displacements = np.logspace(np.log10(Radius), np.log10(MinRad), Annuli)
     return displacements
@@ -19,20 +20,9 @@ def viscous_frequency(displacements, Radius, Height, alpha):
     frequencies = f(displacements)
     return frequencies
     
-def toy_viscoustimescale(r, rmod):
-    t = (2*np.pi*rmod*r)
-    return t
-
-def sample_times(tau, ts, res):
-    t = int(round(tau/res))
-    times = ts[::t]
-    return times 
-
-def toy_accretion_rate(M0, r, ts, rmod):
+def toy_accretion_rate(M0, r, ts):
     f = lambda ts: (r*np.sin(ts/(rmod*r)))/100000
-    m = f(ts)
-    M0 = np.take(M0, ts)
-    ys = np.multiply(M0, 1+(m))
+    ys = np.add(M0, (f(ts)))
     
     return ys
 
@@ -47,19 +37,13 @@ rmod = 4
 for i in range(len(annuli)):  
 
     r = annuli[i]
-    tau = toy_viscoustimescale(r, rmod)
-    times = sample_times(tau, ts, res)
-    print(times)
-    M = toy_accretion_rate(M0, r, times, rmod)
-    
-    M = np.interp(ts, times, M)
-    
+    M = toy_accretion_rate(M0, r, ts)
     Ms.append(M)
     M0 = M
 
-plt.plot(times, Ms[0])
+plt.plot(ts, Ms[0])
 plt.show()
-plt.plot(times, M)
+plt.plot(ts, M)
 plt.show()
 freq, power = signal.welch(M)
 psd = np.multiply(power, freq)
