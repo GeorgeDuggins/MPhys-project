@@ -1,7 +1,9 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy import signal
+import time
 
+start_time = time.time()
 R = 10000 # radius of disk in units of Gravitational radii Rg = GM/c^2
 a = 10 # number of annuli
 R0 = 1 # inner edge of disc
@@ -11,24 +13,43 @@ t = 1000000 #number of time values at which we measure Mdot
 res = 50 #number of values calculated per timescale
 
 def annuli_displacements(Radius, MinRad, Annuli):
+    """
+    Uses the radius and inner radius of the disc to generate the positions along "r" of a 
+    specified number of logarithmically spaced annuli.
+    """
     displacements = np.logspace(np.log10(Radius), np.log10(MinRad), Annuli)
     return displacements
 
 def viscous_frequency(displacements, Radius, Height, alpha):
+    """
+    Viscous frequency formula from A&U
+    """
     f = lambda displacements: displacements**(-3/2)*((Height/Radius)**2)*(alpha/(2*np.pi))
     frequencies = f(displacements)
     return frequencies
     
 def toy_viscoustimescale(r, rmod):
+    """
+    gives a viscour timescale for the sinusoidal model based on the period of a sin wave
+    at the frequency defined by the current position r
+    """
     t = (2*np.pi*rmod*r)
     return t
 
 def sample_times(tau, ts, res):
+    """
+    takes the viscous timescale and calculates the valus of t when accretion rate needs to
+    be calculated in order to give "res" readings per viscous timescale
+    """
     t = int(round(tau/res))
     times = ts[::t]
     return times 
 
 def toy_accretion_rate(M0, r, ts, rmod):
+    """
+    generates a sin wave with amplitude and frequency varying based on displacement and
+    gives its product with all the functions at previous r values
+    """
     f = lambda ts: (r*np.sin(ts/(rmod*r)))/100000
     m = f(ts)
     M0 = np.take(M0, ts)
@@ -49,19 +70,20 @@ for i in range(len(annuli)):
     r = annuli[i]
     tau = toy_viscoustimescale(r, rmod)
     times = sample_times(tau, ts, res)
-    print(times)
     M = toy_accretion_rate(M0, r, times, rmod)
     
     M = np.interp(ts, times, M)
-    
+    print(len(M))
     Ms.append(M)
     M0 = M
 
-plt.plot(times, Ms[0])
+
+plt.plot(ts, Ms[0])
 plt.show()
-plt.plot(times, M)
+plt.plot(ts, M)
 plt.show()
 freq, power = signal.welch(M)
 psd = np.multiply(power, freq)
 plt.loglog(freq, psd)
 plt.show()
+print("--- %s seconds ---" % (time.time() - start_time))
