@@ -7,12 +7,14 @@ import math
 
 start_time = time.time()
 R = 10000 # radius of disk in units of Gravitational radii Rg = GM/c^2
-a = 10 # number of annuli
+a = 10  # number of annuli
 R0 = 1 # inner edge of disc
-alpha = 1 # viscocity parameter
-H = 1 #disc height
+alpha = 0.1 # viscocity parameter
+H = 1000 #disc height
 T = 1000000 #number of time values at which we measure Mdot
 res = 50 #number of values calculated per timescale
+Q = 0.1 #quality factor. Used as the ratio between x0 and FWHM
+F_var = 0.5
 
 def annuli_displacements(Radius, MinRad, Annuli):
     """
@@ -64,12 +66,10 @@ def sin_accretion_rate(M0, r, ts, rmod):
     
     return ys
 
-def m0accretion_rate(T, beta, tau, r, R):
+def m0accretion_rate(T, fvisc, Q, a, F_var):
     
-    t = int(T/tau)
-    dt = int(tau)
-    beta = (1/r)*1000000
-    x = generate_lorentzian(t, dt, beta)
+    dt = 1
+    x = generate_lorentzian(T, dt, fvisc, Q, a, F_var)
     return x
     
 def calculate_M(M0, ts, m):
@@ -78,7 +78,7 @@ def calculate_M(M0, ts, m):
     ys = np.multiply(M0, 1+(m))
     return ys
 
-def generate_lorentzian(N, dt, beta, generate_complex=False, random_state=None):
+def generate_lorentzian(N, dt, fvisc, Q, a, F_var, generate_complex=False, random_state=None):
     """
     This uses the method from Timmer & Koenig [1]_
     Parameters
@@ -113,8 +113,9 @@ def generate_lorentzian(N, dt, beta, generate_complex=False, random_state=None):
     x_fft = np.zeros(len(omega), dtype=complex)
     x_fft.real[1:] = random_state.normal(0, 1, len(omega) - 1)
     x_fft.imag[1:] = random_state.normal(0, 1, len(omega) - 1)
-
-    fomega = lorentzian(beta*(2*math.pi/1000),omega,(beta/10)*(2*math.pi/1000))
+    
+    gamma = (fvisc)/(2*Q)
+    fomega = lorentzian(fvisc,omega,gamma)
     x_fft[1:] *= fomega[1:]
     x_fft[1:] *= (1./np.sqrt(2))
     
@@ -127,11 +128,15 @@ def generate_lorentzian(N, dt, beta, generate_complex=False, random_state=None):
     else:
         x = np.fft.irfft(x_fft, N)
 
+    stddev = np.std(x)
+    x = np.divide(x, stddev)
+    x = np.multiply(x, (F_var**2)/a)
+    
     return x
 
 def lorentzian(a, omega, b):
     
-    f = lambda omega: (1/b*math.pi)*((b**2)/((a-omega )**2+b**2))
+    f = lambda omega: (1/b*math.pi)*((b**2)/((omega-a)**2+b**2))
     y = f(omega)
     
     return y
@@ -148,20 +153,21 @@ M0 = np.ones(T)
 ts = range(T)
 Ms = []
 rmod = 0.2
-beta = 100
+fviscs = viscous_frequency(annuli, R, H, alpha)
 
 for i in range(len(annuli)):  
 
     r = annuli[i]
+    
     tau = sin_viscoustimescale(r, rmod)
     #times = sin_sample_times(tau, ts, res)
-    m = m0accretion_rate(T, beta, tau, r, R)
+    m = m0accretion_rate(T, fviscs[i], Q, a, F_var)
     times = sample_times(tau, T, ts, m)
     M = calculate_M(M0, times, m)
     #M = sin_accretion_rate(M0, r, times, rmod) 
     
     
-    M = np.interp(ts, times, M)
+    #M = np.interp(ts, times, M)
     Ms.append(M)
     M0 = M
 
